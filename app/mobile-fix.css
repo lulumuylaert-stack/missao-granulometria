@@ -28,3 +28,16 @@
 .plot-mission > div, .curve-class > div { display: flex; gap: 10px; flex-wrap: wrap; }
 .plot-mission button, .curve-class button { flex: 1; min-width: 110px; border: 2px solid #c9c3b7; background: white; border-radius: 9px; padding: 12px; font-weight: 850; text-transform: uppercase; }
 .plot-mission button:hover, .curve-class button:hover, .curve-class button.selected { border-color: #e7a93d; background: #fff7e7; }
+
+.coefficient-lab { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+.coefficient-card { padding: 16px; border: 1px solid #d8d2c5; border-radius: 12px; background: #f7f3eb; }
+.coefficient-card > span { color: #1d7f72; font-size: 11px; font-weight: 900; letter-spacing: .12em; }
+.coefficient-card h3 { margin: 6px 0 12px; }
+.coefficient-card p { margin: 12px 0 7px; font-size: 13px; }
+.coefficient-card label { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 14px 0; font-weight: 850; }
+.coefficient-card input { width: 90px; padding: 10px; border: 2px solid #c9c3b7; border-radius: 8px; text-align: center; background: white; }
+.formula-options { display: flex; gap: 6px; flex-wrap: wrap; }
+.formula-options button { flex: 1; min-width: 105px; padding: 9px; border: 2px solid #d1cbbf; border-radius: 8px; background: white; font-size: 12px; font-weight: 750; }
+.formula-options button.selected { border-color: #1d7f72; background: #e6f3f0; color: #145e56; }
+.check-coefficients { grid-column: 1 / -1; }
+@media (max-width: 760px) { .coefficient-lab { grid-template-columns: 1fr; } .check-coefficients { grid-column: auto; } }
