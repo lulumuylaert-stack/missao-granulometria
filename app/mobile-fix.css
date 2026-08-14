@@ -4,3 +4,20 @@
 @media (max-width: 480px) {
   .stage { margin-top: 22px; }
 }
+
+.full-table { max-height: 390px; }
+.full-table table { min-width: 810px; }
+.full-table th { font-size: 12px; white-space: nowrap; z-index: 1; }
+.full-table td { padding: 8px 10px; }
+.full-table input { width: 78px; padding: 8px; border: 1px solid #b9b3a8; border-radius: 7px; text-align: center; background: white; }
+.full-table input:focus { outline: 3px solid #e7a93d55; border-color: #e7a93d; }
+.full-table input:disabled { background: #e9f5f2; color: #145e56; font-weight: 800; }
+.table-help { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-top: 14px; }
+.table-help span { background: #f1eee7; border-radius: 9px; padding: 10px; font-size: 12px; }
+.guide { animation: guide-in .45s ease both; }
+@keyframes guide-in { from { opacity: 0; } to { opacity: 1; } }
+
+@media (max-width: 700px) {
+  .table-help { grid-template-columns: 1fr; }
+  .plot svg { min-width: 620px; }
+}

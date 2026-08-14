@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { assayQuestions, particleQuestions, phasePoints, sample, sieves } from "./game-data";
 
 const labels = ["ARGILA", "SILTE", "AREIA", "PEDREGULHO"];
@@ -8,22 +8,27 @@ const assays = ["PENEIRAMENTO", "SEDIMENTAÇÃO", "PENEIRAMENTO + SEDIMENTAÇÃO
 
 function fmt(n: number) { return n.toLocaleString("pt-BR", { maximumFractionDigits: 3 }); }
 
-function Plot({ active = false }: { active?: boolean }) {
+function Plot({ active = false, guides = [] }: { active?: boolean; guides?: string[] }) {
+  const xFor = (d: number) => 62 + ((Math.log10(d) + 2) / 3) * 510;
+  const yFor = (p: number) => 270 - p * 2.2;
   const pts = sample.rows.slice(0, -1).map((r) => {
-    const x = 48 + ((Math.log10(r.opening) + 1.2) / 1.55) * 500;
-    const y = 268 - r.passing * 2.25;
+    const x = xFor(r.opening);
+    const y = yFor(r.passing);
     return `${x},${y}`;
   }).join(" ");
+  const xTicks = [0.01,0.02,0.04,0.06,0.08,0.1,0.2,0.4,0.6,0.8,1,2,4,6,8,10];
+  const guideData = [{k:"D10",p:10,d:.08},{k:"D30",p:30,d:.175},{k:"D60",p:60,d:.3}];
   return <div className="plot" aria-label="Curva granulométrica semilogarítmica">
     <svg viewBox="0 0 620 330" role="img">
-      <defs><pattern id="grid" width="50" height="22.5" patternUnits="userSpaceOnUse"><path d="M50 0H0V22.5" fill="none" stroke="#d8d2c5" /></pattern></defs>
-      <rect x="48" y="42" width="520" height="226" fill="url(#grid)" />
-      <line x1="48" y1="268" x2="568" y2="268" stroke="#333" strokeWidth="2" /><line x1="48" y1="42" x2="48" y2="268" stroke="#333" strokeWidth="2" />
-      {[0,20,40,60,80,100].map(v=><text key={v} x="38" y={272-v*2.25} textAnchor="end" fontSize="12">{v}</text>)}
+      <rect x="62" y="50" width="510" height="220" fill="#fff" stroke="#333" />
+      {[0,10,20,30,40,50,60,70,80,90,100].map(v=><g key={v}><line x1="62" y1={yFor(v)} x2="572" y2={yFor(v)} stroke={v%20===0?"#b9b3a7":"#e4dfd5"}/><text x="53" y={yFor(v)+4} textAnchor="end" fontSize="11" fontWeight={v===10||v===30||v===60?"700":"400"}>{v}</text></g>)}
+      {xTicks.map(v=><g key={v}><line x1={xFor(v)} y1="50" x2={xFor(v)} y2="270" stroke={[.01,.1,1,10].includes(v)?"#a9a397":"#e4dfd5"}/><text x={xFor(v)} y="287" textAnchor="middle" fontSize="9" transform={`rotate(-35 ${xFor(v)} 287)`}>{fmt(v)}</text></g>)}
+      <line x1="62" y1="270" x2="572" y2="270" stroke="#333" strokeWidth="2" /><line x1="62" y1="50" x2="62" y2="270" stroke="#333" strokeWidth="2" />
       {active && <polyline points={pts} fill="none" stroke="#1d7f72" strokeWidth="4" strokeLinecap="round" className="draw" />}
       {active && sample.rows.slice(0,-1).map((r,i)=>{const [x,y]=pts.split(" ")[i].split(",");return <circle key={r.sieve} cx={x} cy={y} r="6" fill="#e7a93d" stroke="#fff" strokeWidth="2"/>})}
-      <text x="310" y="316" textAnchor="middle" fontSize="14">Diâmetro das partículas (mm) · escala log</text>
-      <text x="15" y="155" textAnchor="middle" fontSize="14" transform="rotate(-90 15 155)">Porcentagem que passa (%)</text>
+      {guideData.filter(g=>guides.includes(g.k)).map(g=><g key={g.k} className="guide"><line x1="62" y1={yFor(g.p)} x2={xFor(g.d)} y2={yFor(g.p)} stroke="#c44d3f" strokeWidth="2" strokeDasharray="6 4"/><line x1={xFor(g.d)} y1={yFor(g.p)} x2={xFor(g.d)} y2="270" stroke="#c44d3f" strokeWidth="2" strokeDasharray="6 4"/><circle cx={xFor(g.d)} cy={yFor(g.p)} r="6" fill="#c44d3f"/><text x={xFor(g.d)+8} y={yFor(g.p)-8} textAnchor="start" fontSize="10" fontWeight="800" fill="#a2382d">{g.k} = {fmt(g.d)} mm</text></g>)}
+      <text x="317" y="327" textAnchor="middle" fontSize="13" fontWeight="700">Diâmetro das partículas (mm) — escala logarítmica</text>
+      <text x="16" y="160" textAnchor="middle" fontSize="13" fontWeight="700" transform="rotate(-90 16 160)">Porcentagem que passa (%)</text>
     </svg>
   </div>;
 }
@@ -32,7 +37,8 @@ export default function Home() {
   const [phase, setPhase] = useState(0), [score,setScore]=useState(0), [lives,setLives]=useState(3);
   const [feedback,setFeedback]=useState(""), [q,setQ]=useState(0), [answered,setAnswered]=useState(0);
   const [order,setOrder]=useState(()=>[0.25,2,0.075,0.6,1.2,0.15,0.425]);
-  const [shake,setShake]=useState(false), [calc,setCalc]=useState(""), [curve,setCurve]=useState(false), [targets,setTargets]=useState<string[]>([]);
+  const [shake,setShake]=useState(false), [curve,setCurve]=useState(false), [targets,setTargets]=useState<string[]>([]);
+  const [tableAnswers,setTableAnswers]=useState(()=>sample.rows.map(()=>["","",""]));
   const pq = particleQuestions[q % particleQuestions.length], aq=assayQuestions[q % assayQuestions.length];
   const title = ["Briefing da missão","Que partícula é essa?","Escolha o ensaio","Monte a torre de peneiras","Analise as massas retidas","Construa a curva granulométrica","Caça ao D10, D30 e D60","Descubra o solo"][phase];
   const progress=Math.round((phase/7)*100);
@@ -43,14 +49,9 @@ export default function Home() {
   const assay=(choice:string)=>{if(choice===aq.answer){award(300);setFeedback("✅ Procedimento correto! +300 pontos — "+aq.why);setAnswered(1)}else wrong("Releia se a amostra é grossa, fina ou contém as duas frações.")};
   const move=(i:number,dir:number)=>{const n=[...order],j=i+dir;if(j<0||j>=n.length)return;[n[i],n[j]]=[n[j],n[i]];setOrder(n)};
   const verifyTower=()=>{if(order.every((v,i)=>v===sieves[i])){award(500);setFeedback("✅ TORRE MONTADA! +500 pontos");setAnswered(1)}else wrong("A torre deve ir da maior abertura, no topo, para a menor.")};
-  const calcQuestions=useMemo(()=>[
-    {label:"% retida por 25 g",answer:5,resolve:"25 × 100 / 500 = 5%"},
-    {label:"% retida acumulada após 5% e 9%",answer:14,resolve:"5% + 9% = 14%"},
-    {label:"% que passa quando 46% ficou retido",answer:54,resolve:"100% − 46% = 54%"},
-  ],[]);
-  const cq=calcQuestions[answered];
-  const checkCalc=()=>{if(Math.abs(Number(calc.replace(",","."))-cq.answer)<0.01){award(answered===2?234:233);setFeedback("✅ "+cq.resolve);setCalc("");if(answered===2)setAnswered(3);else setAnswered(answered+1)}else wrong("Confira a operação e a massa total de 500 g.")};
-  const reset=()=>{setPhase(0);setScore(0);setLives(3);setFeedback("");setQ(Math.floor(Math.random()*5));setAnswered(0);setCurve(false);setTargets([]);setOrder([...sieves].sort(()=>Math.random()-.5))};
+  const updateTable=(row:number,col:number,value:string)=>setTableAnswers(old=>old.map((r,i)=>i===row?r.map((v,j)=>j===col?value:v):r));
+  const checkTable=()=>{const expected=sample.rows.map(r=>[r.retained,r.cumulative,r.passing]);const ok=expected.every((r,i)=>r.every((v,j)=>Math.abs(Number(tableAnswers[i][j].replace(",","."))-v)<.01));if(ok){award(700);setAnswered(1);setFeedback("✅ TABELA COMPLETA! +700 pontos. % passante = 100% − % retida acumulada.")}else wrong("Há valores a revisar. Use: % retida = massa retida × 100 / 500; depois acumule e subtraia de 100.")};
+  const reset=()=>{setPhase(0);setScore(0);setLives(3);setFeedback("");setQ(Math.floor(Math.random()*5));setAnswered(0);setCurve(false);setTargets([]);setTableAnswers(sample.rows.map(()=>["","",""]));setOrder([...sieves].sort(()=>Math.random()-.5))};
   return <main>
     <header className="topbar"><div className="brand"><span className="mark">MG</span><div><b>MISSÃO GRANULOMETRIA</b><small>Laboratório de Mecânica dos Solos</small></div></div><div className="stats"><span>🏆 {score}</span><span>❤️ {lives}</span><button onClick={reset}>↻ Recomeçar</button></div></header>
     <div className="progress"><span style={{width:`${progress}%`}}/><b>{progress}%</b></div>
@@ -61,9 +62,9 @@ export default function Home() {
         {phase===1 && <><QuestionBadge n={answered+1} total={1}/><h2>Uma partícula possui diâmetro de <strong>{fmt(pq.d)} mm</strong>. Como ela é classificada?</h2><div className="choices four">{labels.map(x=><button onClick={()=>particle(x)} key={x}>{x}</button>)}</div></>}
         {phase===2 && <><QuestionBadge n={1} total={1}/><h2>{aq.text}</h2><p>Qual procedimento deve ser adotado?</p><div className="choices">{assays.map(x=><button onClick={()=>assay(x)} key={x}>{x}</button>)}</div></>}
         {phase===3 && <><h2>Ordene da maior abertura para a menor</h2><p>Use as setas (também funcionam por toque) para montar a torre.</p><div className={`tower ${shake?"vibrating":""}`}>{order.map((x,i)=><div className="sieve" key={x}><button aria-label="Mover para cima" onClick={()=>move(i,-1)}>↑</button><b>{fmt(x)} mm</b><button aria-label="Mover para baixo" onClick={()=>move(i,1)}>↓</button></div>)}</div><div className="actions"><button className="primary" onClick={verifyTower}>VERIFICAR ORDEM</button>{answered>0&&<button onClick={()=>{setShake(true);setTimeout(()=>setShake(false),1800)}}>INICIAR PENEIRAMENTO</button>}</div></>}
-        {phase===4 && <><h2>Três pequenas missões de cálculo</h2><div className="table-wrap"><table><thead><tr><th>Peneira</th><th>Abertura</th><th>Massa retida</th></tr></thead><tbody>{sample.rows.map(r=><tr key={r.sieve}><td>#{r.sieve}</td><td>{fmt(r.opening)} mm</td><td>{r.mass} g</td></tr>)}</tbody></table></div>{answered<3?<div className="calc"><span>Massa total = 500 g</span><b>{cq.label}</b><label>Resposta <input value={calc} onChange={e=>setCalc(e.target.value)} inputMode="decimal"/> %</label><button onClick={checkCalc}>CONFERIR</button></div>:<p className="success">✅ Cálculos concluídos. A passagem é 100% − % retida acumulada.</p>}</>}
+        {phase===4 && <><h2>Complete a tabela granulométrica</h2><p>Massa total da amostra: <strong>500 g</strong>. Preencha todas as células em porcentagem.</p><div className="table-wrap full-table"><table><thead><tr><th>Peneira</th><th>Abertura</th><th>Massa retida</th><th>% retida</th><th>% retida acumulada</th><th>% passante</th></tr></thead><tbody>{sample.rows.map((r,i)=><tr key={r.sieve}><td>#{r.sieve}</td><td>{fmt(r.opening)} mm</td><td>{r.mass} g</td>{[0,1,2].map(j=><td key={j}><input aria-label={`${["Porcentagem retida","Porcentagem retida acumulada","Porcentagem passante"][j]} peneira ${r.sieve}`} value={tableAnswers[i][j]} onChange={e=>updateTable(i,j,e.target.value)} inputMode="decimal" disabled={answered>0}/></td>)}</tr>)}</tbody></table></div><div className="table-help"><span><b>1.</b> % retida = massa × 100 / 500</span><span><b>2.</b> Some para acumular</span><span><b>3.</b> % passante = 100 − acumulada</span></div>{answered===0?<button className="primary" onClick={checkTable}>VERIFICAR TABELA</button>:<p className="success">✅ Tabela conferida. Agora esses pontos podem ser levados à curva.</p>}</>}
         {phase===5 && <><h2>Curva de distribuição granulométrica</h2><p>Confira os pontos fornecidos e trace a curva. A abscissa representa os diâmetros; a ordenada, as porcentagens acumuladas passadas.</p><Plot active={curve}/><button className="primary" onClick={()=>{if(!curve){setCurve(true);award(500)}else{award(200);setAnswered(1);setFeedback("✅ Distribuição bem graduada: a curva reúne uma ampla faixa de diâmetros.")}}}>{curve?"CLASSIFICAR DISTRIBUIÇÃO":"TRAÇAR CURVA"}</button></>}
-        {phase===6 && <><h2>Localize os diâmetros característicos</h2><Plot active/><div className="hunt">{[{k:"D10",v:.08},{k:"D30",v:.175},{k:"D60",v:.3}].map(o=><button className={targets.includes(o.k)?"found":""} key={o.k} onClick={()=>{if(!targets.includes(o.k)){setTargets([...targets,o.k]);award(150)}}}>{o.k}<small>{targets.includes(o.k)?`${fmt(o.v)} mm`:"revelar"}</small></button>)}</div>{targets.length===3&&<div className="formula"><b>Cu = D60 / D10 = 3,75</b><span>Cu &lt; 5 → solo uniforme</span><b>Cc = (D30)² / (D10 · D60) = 1,28</b><span>Para areia bem graduada: 1 &lt; Cc &lt; 3 e Cu ≥ 4.</span><button onClick={()=>{award(350);setAnswered(1);setFeedback("✅ Coeficientes interpretados conforme a aula.")}}>CONFIRMAR ANÁLISE</button></div>}</>}
+        {phase===6 && <><h2>Localize os diâmetros característicos</h2><p>Escolha um percentual. A linha sai do eixo vertical, encontra a curva e desce até o diâmetro no eixo horizontal.</p><Plot active guides={targets}/><div className="hunt">{[{k:"D10",v:.08},{k:"D30",v:.175},{k:"D60",v:.3}].map(o=><button className={targets.includes(o.k)?"found":""} key={o.k} onClick={()=>{if(!targets.includes(o.k)){setTargets([...targets,o.k]);award(150)}}}>{o.k}<small>{targets.includes(o.k)?`${fmt(o.v)} mm`:`mostrar linha de ${o.k.slice(1)}%`}</small></button>)}</div>{targets.length===3&&<div className="formula"><b>Cu = D60 / D10 = 3,75</b><span>Cu &lt; 5 → solo uniforme</span><b>Cc = (D30)² / (D10 · D60) = 1,28</b><span>Para areia bem graduada: 1 &lt; Cc &lt; 3 e Cu ≥ 4.</span><button onClick={()=>{award(350);setAnswered(1);setFeedback("✅ Coeficientes interpretados conforme a aula.")}}>CONFIRMAR ANÁLISE</button></div>}</>}
         {phase===7 && <Final score={score} done={answered>0} onAnswer={(x)=>{if(x===sample.description){award(500);setAnswered(1);setFeedback("🎉 MISSÃO CONCLUÍDA! A fração predominante é areia, com presença de silte.")}else wrong("Observe quais frações são mais quantificadas.")}} onReset={reset}/>} 
         {feedback&&<div className={feedback.startsWith("❌")?"feedback bad":"feedback"}>{feedback}</div>}
         {phase>0&&phase<7&&answered>0&&<button className="next" onClick={next}>PRÓXIMA FASE →</button>}
