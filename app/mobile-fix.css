@@ -1,0 +1,6 @@
+@media (max-width: 800px) {
+  .phase-list { position: static; margin-top: 14px; }
+}
+@media (max-width: 480px) {
+  .stage { margin-top: 22px; }
+}
